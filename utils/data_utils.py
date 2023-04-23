@@ -120,3 +120,48 @@ def convert_masks(y, data="acdc"):
         print("Data set not recognized")
         
     return masks
+
+def convert_mask_single(y):
+    """
+    Given one masks with many classes create one mask per class
+    y: shape (w,h)
+    """
+    mask = np.zeros((4, y.shape[0], y.shape[1]))
+    mask[0, :, :] = np.where(y == 0, 1, 0)
+    mask[1, :, :] = np.where(y == 1, 1, 0)
+    mask[2, :, :] = np.where(y == 2, 1, 0)
+    mask[3, :, :] = np.where(y == 3, 1, 0)
+
+    return mask
+
+def visualize(image_raw,mask):
+    """
+    iamge_raw:gray image with shape [width,height,1]
+    mask: segment mask image with shape [num_class,width,height]
+    this function return an image using multi color to visualize masks in raw image
+    """
+    # Convert grayscale image to RGB
+    image = cv2.cvtColor(image_raw, cv2.COLOR_GRAY2RGB)
+    
+    # Get the number of classes (i.e. channels) in the mask
+    num_class = mask.shape[0]
+    
+    # Define colors for each class (using a simple color map)
+    colors = []
+    for i in range(1, num_class):  # skip first class (background)
+        hue = int(i/float(num_class-1) * 179)
+        color = np.zeros((1, 1, 3), dtype=np.uint8)
+        color[0, 0, 0] = hue
+        color[0, 0, 1:] = 255
+        color = cv2.cvtColor(color, cv2.COLOR_HSV2RGB)
+        colors.append(color)
+
+    # Overlay each non-background class mask with a different color on the original image
+    for i in range(1, num_class):
+        class_mask = mask[i, :, :]
+        class_mask = np.repeat(class_mask[:, :, np.newaxis], 3, axis=2)
+        class_mask = class_mask.astype(image.dtype)
+        class_mask = class_mask * colors[i-1]
+        image = cv2.addWeighted(image, 1.0, class_mask, 0.5, 0.0)
+
+    return image
